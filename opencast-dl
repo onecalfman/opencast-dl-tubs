@@ -1,6 +1,10 @@
 #!/bin/bash
 
-url='https://opencast-present.rz.tu-bs.de/search/episode.json'
+# here you need to supply the base url for your organisations opencast server
+url_base=https://opencast-present.rz.tu-bs.de
+
+# the json_path can remain unaltered
+json_path=/search/episode.json
 
 # display help message if no option is chosen
 if [[ ! $2 ]]
@@ -23,7 +27,7 @@ do
 	case ${opt} in
 		d)
 			# download
-			wget -O $path/opencast.json "$url"
+			wget -O $path/opencast.json $url_base$json_path
 			;;		
 		c)
 			# create csv
