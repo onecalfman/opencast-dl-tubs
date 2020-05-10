@@ -1,5 +1,12 @@
 #!/bin/bash
 
+# display help message if no option is chosen
+if [[ ! $2 ]]
+then
+        echo -e "-d -- download json\n-c -- generate csv form json\n-r -- create csv suited for
+dmneu\n-m -- open dmenu prompt of previously generated csv and download selected lecture via wget"
+fi
+
 # folder in wich json and csv get created
 path=$HOME/.data
 
@@ -59,7 +66,7 @@ do
 			;;
 		*)
 			# help message
-			echo -e "-d -- download json\n-c -- generate csv form json\n-r -- create csv suited for dmneu\n-m -- open dmenu prompt of previously generated csv"
+			echo -e "-d -- download json\n-c -- generate csv form json\n-r -- create csv suited for dmneu\n-m -- open dmenu prompt of previously generated csv and download selected lecture via wget"
 			;;
 	esac
 done
