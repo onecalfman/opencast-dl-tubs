@@ -1,5 +1,7 @@
 #!/bin/bash
 
+url='https://opencast-present.rz.tu-bs.de/search/episode.json'
+
 # display help message if no option is chosen
 if [[ ! $2 ]]
 then
@@ -21,7 +23,7 @@ do
 	case ${opt} in
 		d)
 			# download
-			wget -O $path/opencast.json 'https://opencast-present.rz.tu-bs.de/search/episode.json'
+			wget -O $path/opencast.json "$url"
 			;;		
 		c)
 			# create csv
