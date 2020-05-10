@@ -1,22 +1,27 @@
 #!/bin/bash
 
+# folder in wich json and csv get created
 path=$HOME/.data
 
+# create avove folder if not present
 if [ ! -d $path ]
 then
-	mkdir $path
+	mkdir -p $path
 fi
 
 while getopts ":dcrm" opt
 do
 	case ${opt} in
 		d)
+			# download
 			wget -O $path/opencast.json 'https://opencast-present.rz.tu-bs.de/search/episode.json'
-			;;
+			;;		
 		c)
+			# create csv
 			sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g' | awk -F, '{print $2 "," $1 "," $3 "," $4}' | sed -e 's/Ä¼/ü/g' > opencast.csv
 			;;
 		r)
+			# create csv with column width for names limited to 100 chars
 			if [[ ! -f $path/opencast.json ]]
 			then
 				opencast-dl -d
@@ -24,9 +29,9 @@ do
 			sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g'| grep -v -e webcam | awk -F, '{print substr($2,1,100) ","  substr($1,1,100) "," $3 "," $4}' | sed -e 's/Ã¼/ü/g'| column -t -s, -o'|' | sort -u > $path/opencast.csv
 			;;
 		m)
+			# open csv in dmenu and download selected lecture in pwd with wget
 			if [[ ! -f $path/opencast.csv ]]
 			then
-				echo 1
 				opencast-dl -r
 			fi
 
@@ -53,6 +58,7 @@ do
 			wget -O "$series - $title.mp4" -- $url
 			;;
 		*)
+			# help message
 			echo -e "-d -- download json\n-c -- generate csv form json\n-r -- create csv suited for dmneu\n-m -- open dmenu prompt of previously generated csv"
 			;;
 	esac
