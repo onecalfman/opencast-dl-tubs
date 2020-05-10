@@ -11,7 +11,8 @@ json_path=/search/episode.json
 help_message="\n
 -d -- \tdownload json\n\n
 -c -- \tgenerate csv form json\n\n
--r -- \tcreate csv suited for dmneu\n\n
+-r -- \tcreate csv suited for dmneu (first and second\n
+      \tlimited to 100 chars\n\n
 -m -- \topen dmenu prompt of previously generated csv \n
       \tand download selected lecture via wget\n\n
 -l -- \topen dmenu and download all videos belonging \n
@@ -37,106 +38,115 @@ then
 	mkdir $path
 fi
 
+download () {
+	wget -O $path/opencast.json $url_base$json_path
+}
+
+create_csv () {
+	if [[ ! -f $path/opencast.json ]]
+	then
+		download
+	fi
+	sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g' | awk -F, '{print $2 "," $1 "," $3 "," $4}' | sed -e 's/Ä¼/ü/g; s/Ã?/Ü/g; s/Ã¤/ä/g' | sed 's/|$//g' > opencast.csv
+}
+
+create_csv_dmenu () {
+	if [[ ! -f $path/opencast.json ]]
+	then
+		download
+	fi
+	sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g'| grep -v -e webcam | awk -F, '{print substr($2,1,100) ","  substr($1,1,100) "," $3 "," $4}' | sed -e 's/Ã¼/ü/g; s/Ã?/Ü/g; s/Ã¤/ä/g' | sed 's/|$//g'| column -t -s, -o'|' | sort -u > $path/opencast.csv
+}
+
+single_file_download () {
+	if [[ ! -f $path/opencast.csv ]]
+	then
+		create_csv_dmenu
+	fi
+
+	line="$(cat $path/opencast.csv | sed 's/|$//g' | dmenu -i -l 40 -fn "IBMPlexMono:size=9")"
+	
+	if [ ! "$line" ]
+	then
+		echo "Nothing Selected"
+		exit 0
+	fi
+	
+	title="$(echo $line | awk -F'|' '{print $2}')"
+	series="$(echo $line | awk -F'|' '{print $1}')"
+	url="$(echo $line | awk -F'|' '{print $NF}')"
+	
+	if [ ! $url ]
+	then
+		echo "No URL Available"
+		exit 1
+	fi
+	echo $series $title
+	echo $url
+	
+	wget -O "$series - $title.mp4" -- $url
+}
+
+lecture_download () {
+	if [[ ! -f $path/opencast.csv ]]
+	then
+		create_csv_dmenu
+	fi
+
+	lecture="$(cat $path/opencast.csv | sed 's/|$//g' | awk -F'|' '{print $1}' | sort -u | dmenu -i -l 40 -fn "IBMPlexMono:size=12")"
+
+	
+	if [ ! "$lecture" ]
+	then
+		echo "Nothing Selected"
+		exit 0
+	fi
+	
+	IFS=$'\n'
+	n=$(cat ~/.data/opencast.csv | grep -i "^$lecture" | wc -l)
+	c=1
+	for i in $(cat ~/.data/opencast.csv | sed 's/|$//g' | grep -i "^$lecture" )
+	do
+	        echo $i
+		echo Downloading $c of $n
+	        name=$(echo $i | awk -F'|' '{print $2}' | sed 's/^\s*//g; s/\s*$//g')
+	        link=$(echo $i | awk '{print $NF}')
+
+		remote_size=$(curl -I $link | grep 'Content-Length' | awk '{print $NF}' | tail -1 | sed 's/.$//g')
+		local_size=$(du -b "$name".mp4 | awk '{print $1}')
+
+		echo $remote_size
+		echo $local_size
+
+		if [ "$local_size" -eq  "$remote_size" ]
+		then
+			smol=""
+		else
+			smol=smol
+		fi
+		if [[ $force ]] || [[ ! -f "$name".mp4 ]] || [[ $smol ]]
+		then
+			notify-send "Downloading $c of $n"
+			notify-send "$(($remote_size / 1000000)) MB"
+			notify-send "$name"
+	        	wget -O "$name".mp4 $link
+		fi
+		let "c=c+1"
+
+	done
+	notify-send "OpenCast:" "Download for $n files of $(echo $lecture | sed 's/^\s*//g; s/\s*$//g') complete."
+}
+
+
 while getopts ":dcrmlf" opt
 do
 	case ${opt} in
-		d)
-			wget -O $path/opencast.json $url_base$json_path
-			;;
-		c)
-			sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g' | awk -F, '{print $2 "," $1 "," $3 "," $4}' | sed -e 's/Ä¼/ü/g; s/Ã?/Ü/g; s/Ã¤/ä/g' | sed 's/|$//g' > opencast.csv
-			;;
-		r)
-			if [[ ! -f $path/opencast.json ]]
-			then
-				opencast-dl -d
-			fi
-			sed -e 's/{/{\n/g; s/,/,\n/g' $path/opencast.json | awk '/"id"/,0' | grep -e '^"title' -e '^"seriestitle"' -e '^"contributor"' -e '^"url.*mp4"' | sed 's/,/ /g' | awk -F'"' '{print $4 "," }' | tr '\n' ' ' | sed 's/mp4, /mp4\n/g' | sed 's/^https/,,, https/g'| grep -v -e webcam | awk -F, '{print substr($2,1,100) ","  substr($1,1,100) "," $3 "," $4}' | sed -e 's/Ã¼/ü/g; s/Ã?/Ü/g; s/Ã¤/ä/g' | sed 's/|$//g'| column -t -s, -o'|' | sort -u > $path/opencast.csv
-			;;
-		m)
-			if [[ ! -f $path/opencast.csv ]]
-			then
-				echo 1
-				opencast-dl -r
-			fi
-
-			line="$(cat $path/opencast.csv | sed 's/|$//g' | dmenu -i -l 40 -fn "IBMPlexMono:size=9")"
-			
-			if [ ! "$line" ]
-			then
-				echo "Nothing Selected"
-				exit 0
-			fi
-			
-			title="$(echo $line | awk -F'|' '{print $2}')"
-			series="$(echo $line | awk -F'|' '{print $1}')"
-			url="$(echo $line | awk -F'|' '{print $NF}')"
-			
-			if [ ! $url ]
-			then
-				echo "No URL Available"
-				exit 1
-			fi
-			echo $series $title
-			echo $url
-			
-			wget -O "$series - $title.mp4" -- $url
-			;;
-		l)
-			if [[ ! -f $path/opencast.csv ]]
-			then
-				echo 1
-				opencast-dl -r
-			fi
-
-			lecture="$(cat $path/opencast.csv | sed 's/|$//g' | awk -F'|' '{print $1}' | sort -u | dmenu -i -l 40 -fn "IBMPlexMono:size=12")"
-
-			
-			if [ ! "$lecture" ]
-			then
-				echo "Nothing Selected"
-				exit 0
-			fi
-			
-			IFS=$'\n'
-			n=$(cat ~/.data/opencast.csv | grep -i "^$lecture" | wc -l)
-			c=1
-			for i in $(cat ~/.data/opencast.csv | sed 's/|$//g' | grep -i "^$lecture" )
-			do
-			        echo $i
-				echo Downloading $c of $n
-			        name=$(echo $i | awk -F'|' '{print $2}' | sed 's/^\s*//g; s/\s*$//g')
-			        link=$(echo $i | awk '{print $NF}')
-
-				remote_size=$(curl -I $link | grep 'Content-Length' | awk '{print $NF}' | tail -1 | sed 's/.$//g')
-				local_size=$(du -b "$name".mp4 | awk '{print $1}')
-
-				echo $remote_size
-				echo $local_size
-
-				if [ "$local_size" -eq  "$remote_size" ]
-				then
-					smol=""
-				else
-					smol=smol
-				fi
-				if [[ $force ]] || [[ ! -f "$name".mp4 ]] || [[ $smol ]]
-				then
-					notify-send "Downloading $c of $n"
-					notify-send "$(($remote_size / 1000000)) MB"
-					notify-send "$name"
-			        	wget -O "$name".mp4 $link
-				fi
-				let "c=c+1"
-
-			done
-			notify-send "OpenCast:" "Download for $n files of $(echo $lecture | sed 's/^\s*//g; s/\s*$//g') complete."
-			;;
-		f) 
-			#fallthrough
-			;;
-		*)
-			echo -e $help_message
-			;;
+		d) download ;;
+		c) create_csv ;;
+		r) create_csv_dmenu ;;
+		m) single_file_download ;;
+		l) lecture_download ;;
+		f) ;; #fallthrough
+		*) echo -e $help_message ;;
 	esac
 done
