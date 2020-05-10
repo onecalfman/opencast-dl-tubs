@@ -3,7 +3,7 @@
 # folder in wich json and csv get created
 path=$HOME/.data
 
-# create avove folder if not present
+# create above folder if not present
 if [ ! -d $path ]
 then
 	mkdir -p $path
