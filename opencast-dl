@@ -27,7 +27,7 @@ then
 	force=1
 fi
 
-if [ ! $2 ]
+if [ ! $1 ]
 then
 	echo -e $help_message
 fi
