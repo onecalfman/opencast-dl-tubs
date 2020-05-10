@@ -116,10 +116,8 @@ do
 
 				if [ "$local_size" -eq  "$remote_size" ]
 				then
-					echo equal
 					smol=""
 				else
-					echo diff
 					smol=smol
 				fi
 				if [[ $force ]] || [[ ! -f "$name".mp4 ]] || [[ $smol ]]
