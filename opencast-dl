@@ -1,0 +1,224 @@
+#!/bin/sh
+
+url=
+mail=
+auto_download_file=$HOME/.data/opencast-auto-download
+
+json_file=$HOME/.data/opencast.json
+csv_file=$HOME/.data/opencast.csv
+
+tmp_file=/tmp/opencast.csv
+
+help_message="\n
+This program will generate a csv file from the last\n
+2000 Videos/Lectures uploaded to an opencast server\n
+if you can provide the link to the needed json file\n
+which should be on site-url/search/episode.json\n
+for example: \n
+https://opencast-present.rz.tu-bs.de/search/episode.json\n
+It will then generate a csv from that json file using jq.\n
+NOTE: that the json file - at least for my university -\n
+contains 2000 entries at all times, so older lectures\n
+might be lost. To mitigate this, the program will\n
+expand your csv with the new entries and hopefully\n
+provide you with a more and more complete list of all\n
+uploaded videos. If you run it on a regular basis.\n
+\n
+The variables for url andfile path need to be specified\n
+at the top of the script.\n
+If an auto download file is provided this script,\n
+will download all specified lectures to the given path.\n
+If the mail variable is set up a mail system you will\n
+get an email with your new auto-downloads, which is handy\n
+if you run it as cronjob.\n
+\n
+-d -- \tdownload json\n
+\n
+-c -- \tgenerate csv from json\n
+\n
+-f -- \tforce download for all videos (for -l and -a option)\n
+      \tdefault behaviour: don't overwrite existing files\n
+      \twhich are the same size as the remote file.\n
+\n
+-a -- \tautomatically download all files whitch match the\n
+      \tseriestitle string supplied in the auto_download_file\n
+      \tand save them in the corresponding folder the\n
+      \tseriestitle and folder need to double-quoted like:\n
+      \t\"Rechnungswesen\" \"uni/rechnungswesen\"\n
+      \t\"Mechanik 2\" \"uni/tm2\"\n"
+
+force=""
+if [ $(echo $@ | grep f) ]
+then
+	force=1
+fi
+
+if [ ! -d $HOME/.data ]
+then
+	mkdir $HOME/.data
+fi
+
+if [ ! $1 ]
+then
+	echo -e $help_message
+fi
+
+download () {
+	wget -q --show-progress -O $json_file $url
+}
+
+create_csv () {
+	echo ""
+
+	sed -i 's/search-results/olga/' $json_file
+	
+	jq -r '.olga.result[].mediapackage | [.seriestitle, .title, .media.track[].tags.tag[0], .media.track[].url] | @csv' $json_file | sed 's/\([^"]\),/\1\./g' | sort > $tmp_file
+	
+	IFS=$'\n'
+	
+	c=0
+	nl=$(cat $tmp_file | wc -l)
+	for i in $(cat $tmp_file)
+	do
+		if [[ $(echo "$i" | awk -F',' '{print $3}') =~ 360p.* ]] &&  [[ $(echo "$i" | awk -F',' '{print $5}') =~ 360p.* ]]
+		then
+			#echo 1
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $7 "," $8 "," $9 "," $10}')"
+		elif [[ $(echo "$i" | awk -F',' '{print $3}') =~ 360p.* ]] &&  [[ $(echo "$i" | awk -F',' '{print $5}') =~ 720p.* ]]
+		then
+			#echo 2
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $7 "," $8 "," $10 "," $9}')"
+		elif [[ $(echo "$i" | awk -F',' '{print $3}') =~ 720p.* ]] &&  [[ $(echo "$i" | awk -F',' '{print $5}') =~ 720p.* ]]
+		then
+			#echo 3
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $8 "," $7 "," $10 "," $9}')"
+		elif [[ $(echo "$i" | awk -F',' '{print $3}') =~ 720p.* ]] &&  [[ $(echo "$i" | awk -F',' '{print $5}') =~ 360p.* ]]
+		then
+			#echo 4
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $8 "," $7 "," $9 "," $10}')"
+		elif [[ $(echo "$i" | awk -F',' '{print $3}') =~ 360p.* ]]
+		then
+			#echo 5
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $5 "," $6}')"
+		else
+			#echo 6
+			i="$(echo "$i" | awk -F',' '{print $1 "," $2 "," $6 "," $5}')"
+		fi
+	
+		n=$(echo "$i" | awk -F"," '{print NF-1}')
+		n=$((5-n))
+		if [ $n ];
+		then
+			for var in $(seq 1 $n)
+			do
+				i=$(echo $i | sed 's/$/,/g')
+			done
+		fi
+		let "c++"
+		stat=$(echo $c | dbar -min 0 -max $nl -l "\033[0;32m[$c/$nl]\033[0m ")
+		echo $i >> /tmp/opencast2.csv
+		echo -e '\e[1A\e[K'"$stat"
+	done
+	
+	cat $csv_file /tmp/opencast2.csv | sort | sed '1 i\"Seriestitle","Title","360p","720p","360p Video 2","720p Video 2"' | uniq > $csv_file.tmp
+	mv $csv_file.tmp $csv_file
+}
+
+lecture_download () {
+	if [[ ! -f $csv_file ]]
+	then
+		create_csv
+	fi
+	
+	IFS=$'\n'
+	n=$(cat $csv_file | grep -i "$lecture" | wc -l)
+	c=1
+	for i in $(cat $csv_file | grep -i "$lecture" )
+	do
+	        #echo $i
+	        name=$(echo $i | awk -F',' '{print $2}' | sed 's/^\s+//g; s/\s+$//g; s/\//-/g')
+	        link=$(echo $i | awk -F',' '{print $NF}' | sed 's/"//g')
+
+		echo -e "\033[0;32m[Downloading]\033[0m $c of $n:\t $name"
+		remote_size=$(curl -Is $link | grep 'Content-Length' | awk '{print $NF}' | tail -1 | sed 's/.$//g')
+		if [ ! $remote_size ]
+		then
+			echo -e "\033[0;31mUnable to get remote size\033[0m "
+			remote_size=1
+		fi
+
+		if [ -f $name ]
+		then
+			local_size=$(du -b "$name".mp4 | awk '{print $1}')
+	
+			if [ "$local_size" -eq  "$remote_size" ]
+			then
+				smol=""
+			else
+				smol=smol
+			fi
+		fi
+		if [[ $force ]] || [[ ! -f "$name".mp4 ]] || [[ $smol ]]
+		then
+			notify-send "Downloading $c of $n"
+			notify-send "$(($remote_size / 1000000)) MB"
+			notify-send "$name"
+	        	wget -q --show-progress -O "$name".mp4 $link
+			echo $name >> /tmp/opencast-download-counter
+		fi
+		let "c=c+1"
+
+	done
+	echo -e "\n"
+}
+
+init_auto_download () {
+	download
+	create_csv
+	if [ ! -f $auto_download_file ]
+	then
+		echo "No Download file found"
+		exit 1
+	fi
+	if [ -f /tmp/opencast-download-counter ]
+	then
+		rm /tmp/opencast-download-counter 
+	fi
+
+	IFS=$'\n'
+	for line in $(cat $auto_download_file)
+	do
+		lecture=$(echo $line | awk -F'"' '{print $2}')
+		dl_path=$(echo $line | awk -F'"' '{print $4}')
+		if [ ! -d $dl_path ]
+		then
+			mkdir -p $dl_path
+		fi
+		cd "$dl_path"
+		echo $lecture
+		lecture_download
+	done
+	cd
+	if [ -f /tmp/opencast-download-counter ]
+	then
+		notify-send "OpenCast: $(cat /tmp/opencast-download-counter | wc -l) new downloads."
+		if [ $mail ]
+		then
+			cat /tmp/opencast-download-counter | mail -s "New OpenCast download" $mail
+		fi
+	else
+		notify-send "OpenCast: 0 new downloads."
+	fi
+	exit 0
+}
+
+while getopts ":adcrmlf" opt
+do
+	case ${opt} in
+		a) init_auto_download ;;
+		d) download ;;
+		c) create_csv ;;
+		f) ;; #fallthrough
+		*) echo -e $help_message ;;
+	esac
+done
