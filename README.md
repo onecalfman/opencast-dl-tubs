@@ -1,8 +1,33 @@
 # opencast-downloader
-Get direct links to all videos hosted on OpenCast via your organisation.
+Get a csv direct links to videos hosted on OpenCast via your organisation.
 
-The bash script listed above downloads a json file containing direct links to all lectures uploaded to OpenCast by the Tu Braunschweig. It then parses the json file into a csv. Since i had no success with tools like jq the parsing is done with unix tools and leads to a few errors. Nevertheless i find it to be kind of usefull and almost all videos are listed without a problem.
+## Description
+This program will generate a csv file from the last 2000 Videos/Lectures uploaded to an opencast server if you can provide the link to the needed json file which should be on site-url/search/episode.json for example: https://opencast-present.rz.tu-bs.de/search/episode.json
+It will then generate a csv from that json file using jq.
 
-The script should run on Linux (tested) and macOs with dmenu as optional dependency.
+NOTE: that the json file - at least for my university - contains 2000 entries at all times, so older lectures might be lost. To mitigate this, the program will expand your csv with the new entries and hopefully provide you with a more and more complete list of all uploaded videos. If you run it on a regular basis.
 
-It should work for all OpenCast implementation if the base_url variable is set. But it's only tested for the TU Braunschweig.
+The variables for url andfile path need to be specified at the top of the script.  If an auto download file is provided this script, will download all specified lectures to the given path.  If the mail variable is set up a mail system you will get an email with your new auto-downloads, which is handy if you run it as cronjob.
+
+## Dependencies 
+
+* [jq - versitile json-parser](https://stedolan.github.io/jq/)
+* wget
+* curl
+* bash 
+
+## Options
+-d --  download json
+
+-c --  generate csv from json
+
+-f --  force download for all videos (for -l and -a option)
+       default behaviour: don't overwrite existing files
+       which are the same size as the remote file.
+
+-a --  automatically download all files whitch match the
+       seriestitle string supplied in the auto_download_file
+       and save them in the corresponding folder the
+       seriestitle and folder need to double-quoted like:
+       "Rechnungswesen" "uni/rechnungswesen"
+       "Mechanik 2" "uni/tm2"
