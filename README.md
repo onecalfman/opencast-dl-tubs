@@ -21,7 +21,7 @@ The variables for url andfile path need to be specified at the top of the script
 
 * -c   --   generate csv from json
 
-* -f   --   force download for all videos (for -l and -a option)
+* -f   --   force download for all videos (for -a option)
             default behaviour: don't overwrite existing files
             which are the same size as the remote file.
 
