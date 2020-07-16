@@ -17,15 +17,15 @@ The variables for url andfile path need to be specified at the top of the script
 * bash 
 
 ## Options
--d --  download json
+* -d --  download json
 
--c --  generate csv from json
+* -c --  generate csv from json
 
--f --  force download for all videos (for -l and -a option)
+* -f --  force download for all videos (for -l and -a option)
        default behaviour: don't overwrite existing files
        which are the same size as the remote file.
 
--a --  automatically download all files whitch match the
+* -a --  automatically download all files whitch match the
        seriestitle string supplied in the auto_download_file
        and save them in the corresponding folder the
        seriestitle and folder need to double-quoted like:
