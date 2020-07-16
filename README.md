@@ -11,7 +11,7 @@ The variables for url andfile path need to be specified at the top of the script
 
 ## Dependencies 
 
-* [jq - versitile json-parser](https://stedolan.github.io/jq/)
+* [jq - versatile json-parser](https://stedolan.github.io/jq/)
 * wget
 * curl
 * bash 
