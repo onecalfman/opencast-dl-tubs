@@ -28,6 +28,7 @@ The variables for url andfile path need to be specified at the top of the script
 * -a   --   automatically download all files whitch match the
             seriestitle string supplied in the auto_download_file
             and save them in the corresponding folder the
-            seriestitle and folder need to double-quoted like:
+            seriestitle and folder need to double-quoted like:\
+            "seriestitle" "folder"\
             "Rechnungswesen" "uni/rechnungswesen"\
             "Mechanik 2" "uni/tm2"
