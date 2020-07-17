@@ -1,5 +1,5 @@
 # opencast-downloader
-Get a csv direct links to videos hosted on OpenCast via your organisation.
+Get a csv direct links to videos hosted on OpenCast via your organisation. It's written in bash.
 
 ## Description
 This program will generate a csv file from the last 2000 Videos/Lectures uploaded to an opencast server if you can provide the link to the needed json file which should be on site-url/search/episode.json for example: https://opencast-present.rz.tu-bs.de/search/episode.json
