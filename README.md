@@ -13,8 +13,6 @@ The variables for url andfile path need to be specified at the top of the script
 
 * [jq - versatile json-parser](https://stedolan.github.io/jq/)
 * wget
-* curl
-* bash 
 
 ## Options
 * -d   --   download json
