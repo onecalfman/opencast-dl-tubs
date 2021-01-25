@@ -9,12 +9,12 @@ import pandas
 from sys import exit
 from tqdm import tqdm
 
-link='https://opencast-present.rz.tu-bs.de/search/episode.json'         # link to episodes.json filename of your OpenCast website. Probably something like
+link=''         # link to episodes.json filename of your OpenCast website. Probably something like
                 # https://opencast-present.<your universities website>.de/search/episode.json
-json_file = 'test.json'  # location for the downloaded json filename
-filename = 'test.csv'   # location of the created csv (should end with .csv).
-tmp_file = 'test.tmp'   # Temporary filename because i didn't manage to merge two filenames in python and did it with unix shell
-auto_download_file = '.data/opencast-auto-download'
+json_file = ''  # location for the downloaded json filename
+filename = ''   # location of the created csv (should end with .csv).
+tmp_file = ''   # Temporary filename because i didn't manage to merge two filenames in python and did it with unix shell
+auto_download_file = ''
 """
 auto download will has to be a plain text filename with the following syntax
 
