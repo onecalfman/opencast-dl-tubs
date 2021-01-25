@@ -7,7 +7,7 @@ This program will generate a csv file from the last 2000 Videos/Lectures uploade
 Since the last 2000 is a changing batch, it is advised to run the scripts regulary. Both the bash and python version will merge existing csv's with new entries.
 
 ## Python Version
-The python version has currently a lot of dependencies but if it works it works ¯\_(ツ)_/¯
+The python version has currently a lot of dependencies but if it works it works ¯\_(ツ)_/¯\
 Ther are a few comments in the code itself which hopefully help to figure out how to use it.
 PS: currently it works only on *nix systems
 
